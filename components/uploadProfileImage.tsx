@@ -2,6 +2,36 @@
 import React, { useState } from 'react';
 import { createClient } from '../utils/supabase/client';
 
+/*
+
+INSERT - 
+(
+  bucket_id = 'Uploads'::text
+  AND auth.role() = 'authenticated'::text
+)
+
+
+UPDATE - 
+(
+  bucket_id = 'Uploads'::text
+  AND (auth.role() = 'authenticated'::text)
+)
+
+DELETE - 
+(
+  bucket_id = 'Uploads'::text
+  AND auth.role() = 'authenticated'::text
+)
+
+GET - 
+(
+  bucket_id = 'Uploads'::text
+  AND auth.role() = 'authenticated'::text
+)
+
+
+*/
+
 const UploadProfileImage = () => {
   const [image, setImage] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -38,10 +68,10 @@ const UploadProfileImage = () => {
       const fileExt = image.name.split('.').pop();
       const fileName = `profile.${fileExt}`; // Profile image name
       const filePath = `profile-images/${user.id}/${fileName}`; // Store image using user id
-
+      console.log('Uploading to:', filePath);
       // Upload image to the storage bucket
       const { error: uploadError } = await supabase.storage
-        .from('Images') // Replace with your bucket name
+        .from('Uploads') // Replace with your bucket name
         .upload(filePath, image, {
           upsert: true, // Allow overwriting the file to update the profile image
         });
@@ -52,7 +82,7 @@ const UploadProfileImage = () => {
 
       // Fetch the updated profile image URL
       const { data: publicUrlData } = supabase.storage
-        .from('Images')
+        .from('Uploads')
         .getPublicUrl(filePath);
 
       if (publicUrlData) {
@@ -81,9 +111,8 @@ const UploadProfileImage = () => {
       const filePath = `profile-images/${user.id}/profile.jpg`;
 
       const { data: publicUrlData } = supabase.storage
-        .from('Images')
+        .from('Uploads')
         .getPublicUrl(filePath);
-
       if (publicUrlData) {
         setProfileUrl(publicUrlData.publicUrl);
       }
