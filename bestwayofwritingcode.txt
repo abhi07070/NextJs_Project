@@ -1,3 +1,33 @@
+/*
+
+INSERT - 
+(
+  bucket_id = 'Uploads'::text
+  AND auth.role() = 'authenticated'::text
+)
+
+
+UPDATE - 
+(
+  bucket_id = 'Uploads'::text
+  AND (auth.role() = 'authenticated'::text)
+)
+
+DELETE - 
+(
+  bucket_id = 'Uploads'::text
+  AND auth.role() = 'authenticated'::text
+)
+
+GET - 
+(
+  bucket_id = 'Uploads'::text
+  AND auth.role() = 'authenticated'::text
+)
+
+
+*/
+
 // interfaces/user.ts
 export interface User {
     firstName: string;

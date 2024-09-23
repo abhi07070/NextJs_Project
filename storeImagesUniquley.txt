@@ -1,0 +1,143 @@
+"use client";
+import React, { useState } from 'react';
+import { createClient } from '../utils/supabase/client';
+import { v4 as uuidv4 } from 'uuid';
+
+const UploadMultipleImages = () => {
+  const [images, setImages] = useState<File[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [imageUrls, setImageUrls] = useState<string[]>([]);
+
+  // Create Supabase client instance
+  const supabase = createClient();
+
+  // Handle file change
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files) setImages([...files]);
+  };
+
+  // Upload multiple images
+  const uploadImages = async () => {
+    try {
+      setUploading(true);
+
+      // Get the current authenticated user
+      const { data, error } = await supabase.auth.getUser();
+      if (error || !data.user) {
+        alert('Please log in to upload images.');
+        return;
+      }
+
+      const user = data.user;
+      const uploadedUrls: string[] = [];
+
+      for (const image of images) {
+        const fileExt = image.name.split('.').pop();
+        const uniqueFileName = `${uuidv4()}.${fileExt}`; // Generate unique filename
+        const filePath = `user-images/${user.id}/${uniqueFileName}`;
+
+        console.log('Uploading to:', filePath);
+        
+        // Upload image to the storage bucket
+        const { error: uploadError } = await supabase.storage
+          .from('Uploads') // Replace with your bucket name
+          .upload(filePath, image, {
+            upsert: true,
+          });
+
+        if (uploadError) throw uploadError;
+
+        // Get the public URL of the uploaded image
+        const { data: publicUrlData } = supabase.storage
+          .from('Uploads')
+          .getPublicUrl(filePath);
+
+        if (publicUrlData) {
+          uploadedUrls.push(publicUrlData.publicUrl);
+        }
+      }
+
+      setImageUrls(uploadedUrls);
+      alert('Images uploaded successfully!');
+    } catch (error) {
+      console.error('Error uploading images:', error);
+      alert('Failed to upload images.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  // Fetch all images for the user
+  const fetchUserImages = async () => {
+    try {
+      const { data, error } = await supabase.auth.getUser();
+      if (error || !data.user) {
+        alert('Please log in to fetch images.');
+        return;
+      }
+
+      const user = data.user;
+
+      // List all objects in the user's folder
+      const { data: files, error: listError } = await supabase.storage
+        .from('Uploads')
+        .list(`user-images/${user.id}`, {
+          limit: 100, // Adjust the limit based on your requirements
+        });
+
+      if (listError) throw listError;
+
+      const fetchedUrls: string[] = [];
+
+      files?.forEach(file => {
+        const { data: publicUrlData } = supabase.storage
+          .from('Uploads')
+          .getPublicUrl(`user-images/${user.id}/${file.name}`);
+
+        if (publicUrlData) {
+          fetchedUrls.push(publicUrlData.publicUrl);
+        }
+      });
+
+      setImageUrls(fetchedUrls);
+    } catch (error) {
+      console.error('Error fetching images:', error);
+      alert('Failed to fetch images.');
+    }
+  };
+
+  return (
+    <div>
+      <div>
+        <h3>Upload Multiple Images</h3>
+        <input
+          type="file"
+          accept="image/*"
+          multiple
+          onChange={handleFileChange}
+          disabled={uploading}
+        />
+      </div>
+
+      <button onClick={uploadImages} disabled={uploading || images.length === 0}>
+        {uploading ? 'Uploading...' : 'Upload Images'}
+      </button>
+
+      <button onClick={fetchUserImages}>Fetch Uploaded Images</button>
+
+      <div>
+        {imageUrls.length > 0 && (
+          <div>
+            <h3>Your Uploaded Images:</h3>
+            {imageUrls.map((url, index) => (
+              <img key={index} src={url} alt={`Uploaded ${index}`} width={150} height={150} />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default UploadMultipleImages;
